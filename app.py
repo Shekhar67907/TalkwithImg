@@ -4,9 +4,9 @@ import tensorflow as tf
 import numpy as np
 import openai
 
-# Load API key from Streamlit secrets (make sure to set this in Streamlit's secrets management)
+# Load API key from Streamlit secrets
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-openai.api_key = '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'
 # Caching the model to improve performance
 @st.cache_resource
 def load_model():
@@ -14,7 +14,7 @@ def load_model():
         model = tf.keras.applications.MobileNetV2(weights="imagenet")
         return model
     except Exception as e:
-        st.error("Failed to load the model. Please try again later.")
+        st.error(f"Failed to load the model. Error: {e}")
         st.stop()
 
 model = load_model()
@@ -22,13 +22,15 @@ model = load_model()
 # Preprocess the image
 def preprocess_image(image):
     try:
+        st.write("Preprocessing image...")
         img = image.resize((224, 224))
         img_array = tf.keras.preprocessing.image.img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0)
         img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
+        st.write("Image preprocessed successfully.")
         return img_array
     except Exception as e:
-        st.error("Failed to preprocess the image. Please try again.")
+        st.error(f"Failed to preprocess the image. Error: {e}")
         return None
 
 # Get image classification results with error handling
@@ -36,11 +38,13 @@ def classify_image(image):
     processed_image = preprocess_image(image)
     if processed_image is not None:
         try:
+            st.write("Running model prediction...")
             predictions = model.predict(processed_image)
             decoded_predictions = tf.keras.applications.mobilenet_v2.decode_predictions(predictions, top=1)
+            st.write(f"Predictions: {decoded_predictions}")
             return decoded_predictions[0][0][1]  # Return the most likely class name
         except Exception as e:
-            st.error("Failed to classify the image. Please try again.")
+            st.error(f"Failed to classify the image. Error: {e}")
             return None
     else:
         return None
@@ -55,7 +59,7 @@ def generate_response(text):
         )
         return response.choices[0].text.strip()
     except Exception as e:
-        st.error("Failed to generate a response. Please try again.")
+        st.error(f"Failed to generate a response. Error: {e}")
         return None
 
 # Streamlit UI
