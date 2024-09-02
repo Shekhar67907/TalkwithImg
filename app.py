@@ -24,7 +24,8 @@ model = load_model()
 def preprocess_image(image):
     try:
         st.write("Preprocessing image...")
-        img = image.resize((224, 224))
+        img = image.convert("RGB")  # Ensure image is in RGB mode
+        img = img.resize((224, 224))
         img_array = tf.keras.preprocessing.image.img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0)
         img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
