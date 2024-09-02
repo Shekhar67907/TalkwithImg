@@ -1,3 +1,13 @@
+import os
+import subprocess
+import sys
+
+# Install the openai package if not installed
+try:
+    import openai
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "openai"])
+    import openai
 import streamlit as st
 import openai
 from PIL import Image
