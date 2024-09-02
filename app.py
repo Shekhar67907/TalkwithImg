@@ -1,47 +1,48 @@
-import os
-import subprocess
-import sys
-
-# Install the openai package if not installed
-try:
-    import openai
-except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "openai"])
-    import openai
 import streamlit as st
-import openai
 from PIL import Image
 import tensorflow as tf
 import numpy as np
+import openai
 
-# Load API key from Streamlit secrets
+# Load API key from Streamlit secrets (make sure to set this in Streamlit's secrets management)
+
 openai.api_key = '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'
-
-
 # Caching the model to improve performance
 @st.cache_resource
 def load_model():
-    return tf.keras.applications.MobileNetV2(weights="imagenet")
+    try:
+        model = tf.keras.applications.MobileNetV2(weights="imagenet")
+        return model
+    except Exception as e:
+        st.error("Failed to load the model. Please try again later.")
+        st.stop()
 
 model = load_model()
 
 # Preprocess the image
 def preprocess_image(image):
-    img = image.resize((224, 224))
-    img_array = tf.keras.preprocessing.image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)
-    img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
-    return img_array
+    try:
+        img = image.resize((224, 224))
+        img_array = tf.keras.preprocessing.image.img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0)
+        img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
+        return img_array
+    except Exception as e:
+        st.error("Failed to preprocess the image. Please try again.")
+        return None
 
 # Get image classification results with error handling
 def classify_image(image):
-    try:
-        processed_image = preprocess_image(image)
-        predictions = model.predict(processed_image)
-        decoded_predictions = tf.keras.applications.mobilenet_v2.decode_predictions(predictions, top=1)
-        return decoded_predictions[0][0][1]  # Return the most likely class name
-    except Exception as e:
-        st.error("Failed to classify the image. Please try again.")
+    processed_image = preprocess_image(image)
+    if processed_image is not None:
+        try:
+            predictions = model.predict(processed_image)
+            decoded_predictions = tf.keras.applications.mobilenet_v2.decode_predictions(predictions, top=1)
+            return decoded_predictions[0][0][1]  # Return the most likely class name
+        except Exception as e:
+            st.error("Failed to classify the image. Please try again.")
+            return None
+    else:
         return None
 
 # Generate a response using GPT with error handling
@@ -73,11 +74,10 @@ if uploaded_image is not None:
 
         user_question = st.text_input("Ask a question based on the image:")
 
-        if user_question:
-            if len(user_question.strip()) > 0:
-                context = f"The image shows a {image_class}. {user_question}"
-                chatbot_response = generate_response(context)
-                if chatbot_response:
-                    st.write(f"Chatbot: {chatbot_response}")
-            else:
-                st.warning("Please enter a valid question.")
+        if user_question and user_question.strip():
+            context = f"The image shows a {image_class}. {user_question}"
+            chatbot_response = generate_response(context)
+            if chatbot_response:
+                st.write(f"Chatbot: {chatbot_response}")
+        else:
+            st.warning("Please enter a valid question.")
