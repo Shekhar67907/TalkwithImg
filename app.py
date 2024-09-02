@@ -7,7 +7,6 @@ import openai
 # Load API key from Streamlit secrets
 openai.api_key = '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'
 
-
 # Caching the model to improve performance
 @st.cache_resource
 def load_model():
@@ -50,7 +49,7 @@ def classify_image(image):
     else:
         return None
 
-# Generate a response using GPT with error handling
+# Generate a response using GPT with error handling (updated for new API)
 def generate_response(text):
     try:
         response = openai.ChatCompletion.create(
@@ -60,7 +59,7 @@ def generate_response(text):
                 {"role": "user", "content": text}
             ]
         )
-        return response.choices[0].message['content'].strip()
+        return response['choices'][0]['message']['content'].strip()
     except Exception as e:
         st.error(f"Failed to generate a response. Error: {e}")
         return None
