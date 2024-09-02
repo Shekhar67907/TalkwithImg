@@ -4,11 +4,16 @@ from PIL import Image
 import tensorflow as tf
 import numpy as np
 
-# Set up OpenAI API
-openai.api_key = 'your-openai-api-key'
+# Load API key from Streamlit secrets
+openai.api_key = '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'
 
-# Load a pre-trained image classification model (e.g., MobileNetV2)
-model = tf.keras.applications.MobileNetV2(weights="imagenet")
+
+# Caching the model to improve performance
+@st.cache_resource
+def load_model():
+    return tf.keras.applications.MobileNetV2(weights="imagenet")
+
+model = load_model()
 
 # Preprocess the image
 def preprocess_image(image):
@@ -18,21 +23,29 @@ def preprocess_image(image):
     img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
     return img_array
 
-# Get image classification results
+# Get image classification results with error handling
 def classify_image(image):
-    processed_image = preprocess_image(image)
-    predictions = model.predict(processed_image)
-    decoded_predictions = tf.keras.applications.mobilenet_v2.decode_predictions(predictions, top=1)
-    return decoded_predictions[0][0][1]  # Return the most likely class name
+    try:
+        processed_image = preprocess_image(image)
+        predictions = model.predict(processed_image)
+        decoded_predictions = tf.keras.applications.mobilenet_v2.decode_predictions(predictions, top=1)
+        return decoded_predictions[0][0][1]  # Return the most likely class name
+    except Exception as e:
+        st.error("Failed to classify the image. Please try again.")
+        return None
 
-# Generate a response using GPT
+# Generate a response using GPT with error handling
 def generate_response(text):
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=text,
-        max_tokens=100
-    )
-    return response.choices[0].text.strip()
+    try:
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=text,
+            max_tokens=100
+        )
+        return response.choices[0].text.strip()
+    except Exception as e:
+        st.error("Failed to generate a response. Please try again.")
+        return None
 
 # Streamlit UI
 st.title("Image-Chatbot with Streamlit")
@@ -45,11 +58,16 @@ if uploaded_image is not None:
     st.image(image, caption='Uploaded Image.', use_column_width=True)
 
     image_class = classify_image(image)
-    st.write(f"Image Classification: **{image_class}**")
+    if image_class:
+        st.write(f"Image Classification: **{image_class}**")
 
-    user_question = st.text_input("Ask a question based on the image:")
+        user_question = st.text_input("Ask a question based on the image:")
 
-    if user_question:
-        context = f"The image shows a {image_class}. {user_question}"
-        chatbot_response = generate_response(context)
-        st.write(f"Chatbot: {chatbot_response}")
+        if user_question:
+            if len(user_question.strip()) > 0:
+                context = f"The image shows a {image_class}. {user_question}"
+                chatbot_response = generate_response(context)
+                if chatbot_response:
+                    st.write(f"Chatbot: {chatbot_response}")
+            else:
+                st.warning("Please enter a valid question.")
